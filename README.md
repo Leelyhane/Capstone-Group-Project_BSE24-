@@ -8,6 +8,7 @@ The repository is set up to manage code, collaboration, and CI/CD workflows effi
 2. LUSWATA ANDREW BRIAN
 3. KIRUMIRA EDWARD BENJAMIN
 4. KIKOMEKO BASHIR MUSA
+5. NAKISANZE DEZIRANTA
 
 SETUP INSTRUCTIONS
 1.  Initializing the repository (git init)
