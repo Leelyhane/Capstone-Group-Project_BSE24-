@@ -18,7 +18,8 @@
     "build": "react-scripts build",
     "eject": "react-scripts eject",
     "test": "jest",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "prettier": "prettier --write ."
   },
   "jest": {
     "setupFilesAfterEnv": [
@@ -61,6 +62,7 @@
     "@testing-library/react": "^16.0.1",
     "axios-mock-adapter": "^2.0.0",
     "babel-jest": "^29.7.0",
-    "jest": "^27.5.1"
+    "jest": "^27.5.1",
+    "prettier": "^3.3.3"
   }
 }
