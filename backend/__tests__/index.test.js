@@ -3,7 +3,7 @@ const app = require("../index"); // Adjust the path based on your project struct
 
 describe("API Tests", () => {
   const newUser = {
-    username: "Benjamin", // Unique username
+    username: `testuser_${Date.now()}`, // Unique username
     secret: "testsecret",
     email: "testuser@example.com",
     first_name: "Test",
