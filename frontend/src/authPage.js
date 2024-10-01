@@ -13,7 +13,7 @@ const AuthPage = ({ onAuth }) => {
         />
         <input
           name="password"
-          placeholder="Login Password" // Updated placeholder
+          placeholder="Login Password" 
           type="password"
           aria-label="password"
         />
