@@ -7,7 +7,16 @@ const axios = require('axios');
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: true }));
+
+// Updated CORS configuration
+app.use(
+  cors({
+    origin:
+      process.env.FRONTEND_URL || 'https://main.dys46hwmlisn3.amplifyapp.com',
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 
 app.post('/signup', async (req, res) => {
   const { username, secret, email, first_name, last_name } = req.body;
@@ -44,9 +53,10 @@ app.post('/login', async (req, res) => {
 // Export the app for testing
 module.exports = app;
 
-// Listen on port 3001
+// Listen on port 3001 or the port specified in the environment
+const PORT = process.env.PORT || 3001;
 if (require.main === module) {
-  app.listen(3001, () => {
-    console.log('Server is running on port 3001');
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
   });
 }

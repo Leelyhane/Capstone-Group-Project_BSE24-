@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -11,8 +11,8 @@ on:
       - main
 
 jobs:
-  build-frontend:
-    name: Build Frontend
+  build-and-test-frontend:
+    name: Build and Test Frontend
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -46,9 +46,17 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+        env:
+          REACT_APP_CHAT_ENGINE_PROJECT_ID: ${{ secrets.REACT_APP_CHAT_ENGINE_PROJECT_ID }}
 
-  build-backend:
-    name: Build Backend
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: ./frontend/build
+
+  build-and-test-backend:
+    name: Build and Test Backend
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -79,3 +87,69 @@ jobs:
 
       - name: Run Jest tests
         run: npm test
+
+      - name: Create backend artifact
+        run: |
+          zip -r backend.zip .
+        working-directory: ./backend
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-build
+          path: ./backend/backend.zip
+
+  deploy-frontend:
+    name: Deploy Frontend to AWS Amplify
+    needs: build-and-test-frontend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' # Only deploy on main branch
+
+    steps:
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-build
+          path: frontend-build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: your-aws-region
+
+      - name: Deploy to AWS Amplify
+        run: |
+          aws amplify start-job --app-id YOUR_AMPLIFY_APP_ID --branch-name main --job-type RELEASE
+
+  deploy-backend:
+    name: Deploy Backend to AWS EC2
+    needs: build-and-test-backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' # Only deploy on main branch
+
+    steps:
+      - name: Download backend artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: backend-build
+
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+          CHAT_ENGINE_PRIVATE_KEY: ${{ secrets.CHAT_ENGINE_PRIVATE_KEY }}
+          CHAT_ENGINE_PROJECT_ID: ${{ secrets.CHAT_ENGINE_PROJECT_ID }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          scp -o StrictHostKeyChecking=no -i private_key backend.zip ${USER}@${HOST}:~/
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
+            unzip -o ~/backend.zip -d ~/app
+            cd ~/app
+            echo "CHAT_ENGINE_PRIVATE_KEY=${CHAT_ENGINE_PRIVATE_KEY}" > .env
+            echo "CHAT_ENGINE_PROJECT_ID=${CHAT_ENGINE_PROJECT_ID}" >> .env
+            npm install
+            pm2 restart app || pm2 start index.js --name app
+          '
