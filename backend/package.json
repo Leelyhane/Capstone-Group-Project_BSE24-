@@ -7,7 +7,7 @@
     "start": "node index.js",
     "lint": "eslint 'src/**/*.js'",
     "test": "jest",
-    "build": "npm install && npm install dotenv", 
+    "build": "npm install && npm install dotenv",
     "prettier": "prettier --write ."
   },
   "author": "Adam La Morre",
