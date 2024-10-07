@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js",
+    "start": "node index.js",
     "lint": "eslint 'src/**/*.js'",
     "test": "jest",
     "build": "echo 'No build step for backend'",
