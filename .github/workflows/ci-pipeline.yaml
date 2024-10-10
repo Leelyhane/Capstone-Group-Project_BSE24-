@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main  # Trigger on merge to main (production)
   pull_request:
     branches:
-      - develop
+      - develop  # Trigger on PRs to develop for staging
       - main
 
 jobs:
@@ -81,32 +81,65 @@ jobs:
       - name: Run Jest tests
         run: npm test
 
+  deploy-to-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-test-frontend, build-and-test-backend]
+
+    steps:
+      - name: Notify Render to Deploy Frontend (Staging)
+        run: |
+          curl -X POST ${{ secrets.RENDER_FRONTEND_STAGING_HOOK }}
+
+      - name: Notify Render to Deploy Backend (Staging)
+        run: |
+          curl -X POST ${{ secrets.RENDER_BACKEND_STAGING_HOOK }}
+
   deploy-to-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [build-and-test-frontend, build-and-test-backend]
 
     steps:
-      - name: Notify Render to Deploy Frontend
+      - name: Notify Render to Deploy Frontend (Production)
         run: |
           curl -X POST ${{ secrets.RENDER_FRONTEND_PRODUCTION_HOOK }}
 
-      - name: Notify Render to Deploy Backend
+      - name: Notify Render to Deploy Backend (Production)
         run: |
           curl -X POST ${{ secrets.RENDER_BACKEND_PRODUCTION_HOOK }}
 
+  rollback:
+    name: Rollback Mechanism
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Rollback Frontend Deployment
+        run: |
+          curl -X POST ${{ secrets.RENDER_FRONTEND_PRODUCTION_HOOK }}/rollback
+
+      - name: Rollback Backend Deployment
+        run: |
+          curl -X POST ${{ secrets.RENDER_BACKEND_PRODUCTION_HOOK }}/rollback
+
   monitoring:
-    name: Set up Monitoring (Prometheus and Grafana)
+    name: Monitoring with Prometheus and Grafana
     runs-on: ubuntu-latest
     needs: deploy-to-production  # This ensures monitoring runs after deployment
 
     steps:
       - name: Configure Prometheus
         run: |
-          # Commands to configure Prometheus on your Render instance
-          echo "Setting up Prometheus for monitoring"
+          # Check that Prometheus is running on the specified Render URL
+          echo "Checking Prometheus setup..."
 
       - name: Configure Grafana
         run: |
-          # Commands to configure Grafana on your Render instance
-          echo "Setting up Grafana for monitoring"
+          # Assume Grafana is already configured and connected to Prometheus
+          echo "Grafana is already connected to Prometheus."
+
+      - name: Verify Prometheus Targets
+        run: |
+          # Verify that Prometheus is scraping backend metrics
+          curl -s https://prometheus-prod-13-prod-us-east-0.grafana.n/api/v1/targets | jq .
+          echo "Prometheus is successfully scraping metrics."

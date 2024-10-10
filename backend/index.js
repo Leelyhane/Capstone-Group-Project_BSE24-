@@ -1,9 +1,9 @@
-// index.js
 require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const client = require('prom-client'); // Add Prometheus client
 
 const app = express();
 app.use(express.json());
@@ -17,6 +17,36 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 );
+
+// Create a Registry for Prometheus metrics
+const register = new client.Registry();
+
+// Collect default Node.js process metrics and HTTP request metrics
+client.collectDefaultMetrics({ register });
+
+// Define custom metrics, such as request duration for /signup and /login
+const httpRequestDurationMicroseconds = new client.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.1, 5, 15, 50, 100, 500],
+});
+
+// Register custom metrics
+register.registerMetric(httpRequestDurationMicroseconds);
+
+// Middleware to start tracking HTTP request duration
+app.use((req, res, next) => {
+  const end = httpRequestDurationMicroseconds.startTimer();
+  res.on('finish', () => {
+    end({
+      method: req.method,
+      route: req.route ? req.route.path : req.originalUrl,
+      status_code: res.statusCode,
+    });
+  });
+  next();
+});
 
 app.post('/signup', async (req, res) => {
   const { username, secret, email, first_name, last_name } = req.body;
@@ -48,6 +78,12 @@ app.post('/login', async (req, res) => {
   } catch (e) {
     return res.status(e.response.status).json(e.response.data);
   }
+});
+
+// Metrics endpoint for Prometheus to scrape
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Export the app for testing
