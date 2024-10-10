@@ -3,8 +3,7 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - develop
-      - main
+      - main  # Trigger on merge to main (production)
   pull_request:
     branches:
       - develop
@@ -81,3 +80,33 @@ jobs:
 
       - name: Run Jest tests
         run: npm test
+
+  deploy-to-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-test-frontend, build-and-test-backend]
+
+    steps:
+      - name: Notify Render to Deploy Frontend
+        run: |
+          curl -X POST ${{ secrets.RENDER_FRONTEND_PRODUCTION_HOOK }}
+
+      - name: Notify Render to Deploy Backend
+        run: |
+          curl -X POST ${{ secrets.RENDER_BACKEND_PRODUCTION_HOOK }}
+
+  monitoring:
+    name: Set up Monitoring (Prometheus and Grafana)
+    runs-on: ubuntu-latest
+    needs: deploy-to-production  # This ensures monitoring runs after deployment
+
+    steps:
+      - name: Configure Prometheus
+        run: |
+          # Commands to configure Prometheus on your Render instance
+          echo "Setting up Prometheus for monitoring"
+
+      - name: Configure Grafana
+        run: |
+          # Commands to configure Grafana on your Render instance
+          echo "Setting up Grafana for monitoring"
