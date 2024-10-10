@@ -101,6 +101,11 @@ jobs:
     needs: [build-and-test-frontend, build-and-test-backend]
 
     steps:
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          
       - name: Notify Render to Deploy Frontend (Production)
         run: |
           curl -X POST ${{ secrets.RENDER_FRONTEND_PRODUCTION_HOOK }}
@@ -128,18 +133,27 @@ jobs:
     needs: deploy-to-production  # This ensures monitoring runs after deployment
 
     steps:
-      - name: Configure Prometheus
+      - name: Check Prometheus Metrics Endpoint
         run: |
-          # Check that Prometheus is running on the specified Render URL
-          echo "Checking Prometheus setup..."
-
-      - name: Configure Grafana
-        run: |
-          # Assume Grafana is already configured and connected to Prometheus
-          echo "Grafana is already connected to Prometheus."
+          echo "Checking Prometheus metrics endpoint..."
+          curl -s https://capstone-group-project-bse24-qvrm.onrender.com/metrics
 
       - name: Verify Prometheus Targets
         run: |
-          # Verify that Prometheus is scraping backend metrics
-          curl -s https://prometheus-prod-13-prod-us-east-0.grafana.n/api/v1/targets | jq .
-          echo "Prometheus is successfully scraping metrics."
+          echo "Verifying Prometheus targets..."
+          curl -s https://monitoring-production.onrender.com/api/v1/targets | jq .
+
+      - name: Verify Grafana Connection
+        run: |
+          echo "Verifying Grafana connection to Prometheus..."
+
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.GRAFANA_API_TOKEN }}" https://grafana-production-ig55.onrender.com/api/datasources)
+
+          # Check if Prometheus is among the data sources
+          if echo "$response" | jq -e '.[] | select(.name=="Prometheus")'; then
+            echo "Grafana is successfully connected to Prometheus."
+          else
+            echo "Grafana is not connected to Prometheus."
+            echo "Response: $response"
+            exit 1
+          fi
