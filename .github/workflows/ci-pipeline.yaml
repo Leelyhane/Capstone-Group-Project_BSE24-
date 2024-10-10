@@ -3,12 +3,11 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - develop
+      - main  # Trigger on merge to main (production)
   pull_request:
     branches:
+      - develop
       - main
-    types:
-      - closed
 
 jobs:
   build-and-test-frontend:
@@ -49,14 +48,6 @@ jobs:
         env:
           REACT_APP_CHAT_ENGINE_PROJECT_ID: ${{ secrets.REACT_APP_CHAT_ENGINE_PROJECT_ID }}
 
-      - name: Deploy to Render (Staging)
-        if: github.ref == 'refs/heads/develop'
-        run: curl -X POST ${{ secrets.RENDER_FRONTEND_STAGING_HOOK }}
-
-      - name: Deploy to Render (Production)
-        if: ${{ github.event.pull_request.merged == true && github.ref == 'refs/heads/main' }}
-        run: curl -X POST ${{ secrets.RENDER_FRONTEND_PRODUCTION_HOOK }}
-
   build-and-test-backend:
     name: Build and Test Backend
     runs-on: ubuntu-latest
@@ -90,10 +81,32 @@ jobs:
       - name: Run Jest tests
         run: npm test
 
-      - name: Deploy to Render (Staging)
-        if: github.ref == 'refs/heads/develop'
-        run: curl -X POST ${{ secrets.RENDER_BACKEND_STAGING_HOOK }}
+  deploy-to-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-test-frontend, build-and-test-backend]
 
-      - name: Deploy to Render (Production)
-        if: ${{ github.event.pull_request.merged == true && github.ref == 'refs/heads/main' }}
-        run: curl -X POST ${{ secrets.RENDER_BACKEND_PRODUCTION_HOOK }}
+    steps:
+      - name: Notify Render to Deploy Frontend
+        run: |
+          curl -X POST ${{ secrets.RENDER_FRONTEND_PRODUCTION_HOOK }}
+
+      - name: Notify Render to Deploy Backend
+        run: |
+          curl -X POST ${{ secrets.RENDER_BACKEND_PRODUCTION_HOOK }}
+
+  monitoring:
+    name: Set up Monitoring (Prometheus and Grafana)
+    runs-on: ubuntu-latest
+    needs: deploy-to-production  # This ensures monitoring runs after deployment
+
+    steps:
+      - name: Configure Prometheus
+        run: |
+          # Commands to configure Prometheus on your Render instance
+          echo "Setting up Prometheus for monitoring"
+
+      - name: Configure Grafana
+        run: |
+          # Commands to configure Grafana on your Render instance
+          echo "Setting up Grafana for monitoring"
