@@ -147,7 +147,7 @@ jobs:
         run: |
           echo "Verifying Grafana connection to Prometheus..."
 
-          response=$(curl -s -H "Authorization: Bearer ${{ secrets.GRAFANA_API_TOKEN }}" https://grafana-production-ig55.onrender.com/api/datasources)
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.GRAFANA_API_TOKEN_01 }}" https://grafana-production-ig55.onrender.com/api/datasources)
 
           # Check if Prometheus is among the data sources
           if echo "$response" | jq -e '.[] | select(.name=="Prometheus")'; then
