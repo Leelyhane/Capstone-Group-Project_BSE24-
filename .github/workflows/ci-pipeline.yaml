@@ -133,12 +133,27 @@ jobs:
     needs: deploy-to-production  # This ensures monitoring runs after deployment
 
     steps:
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
       - name: Check Prometheus Metrics Endpoint
         run: |
-          echo "Checking Prometheus metrics endpoint..."
-          curl -s https://capstone-group-project-bse24-qvrm.onrender.com/metrics
+          echo "Checking Prometheus metrics endpoint for the backend..."
+          curl -s https://capstone-group-project-bse24-qvrm.onrender.com/metrics || exit 1
 
       - name: Verify Prometheus Targets
         run: |
           echo "Verifying Prometheus targets..."
-          curl -s https://monitoring-production.onrender.com/api/v1/targets | jq .
+          curl -s https://monitoring-production.onrender.com/api/v1/targets | jq '.data.activeTargets[] | {instance: .discoveredLabels.instance, health: .health}'
+
+      - name: Query CPU Usage in Prometheus
+        run: |
+          echo "Checking CPU usage..."
+          curl -G 'https://monitoring-production.onrender.com/api/v1/query' --data-urlencode 'query=rate(node_cpu_seconds_total[5m])' | jq .
+
+      - name: Query Memory Usage in Prometheus
+        run: |
+          echo "Checking memory usage..."
+          curl -G 'https://monitoring-production.onrender.com/api/v1/query' --data-urlencode 'query=node_memory_Active_bytes' | jq .
